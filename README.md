@@ -3,6 +3,10 @@
 
 Link to most recent Travis build https://travis-ci.org/VirtualPregnancy/placentagen
 
+### Documentation
+
+The most recent documentation is here https://placentagen.readthedocs.io/en/latest/
+
 ### Installation
 
 Use pip to install the libraries
