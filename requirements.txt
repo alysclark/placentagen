@@ -2,3 +2,5 @@ nose
 coverage
 scipy
 numpy
+SimpleITK
+tk
