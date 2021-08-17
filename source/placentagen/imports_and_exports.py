@@ -6,7 +6,17 @@ from . import pg_utilities
 import warnings
 import skimage
 from skimage import io
+import tkinter as tk
+from tkinter import filedialog
 
+def find_file():
+
+    root = tk.Tk()
+    root.withdraw()
+
+    file_path = filedialog.askopenfilename()
+
+    return file_path
 
 
 def export_ex_coords(data, groupname, filename, type):

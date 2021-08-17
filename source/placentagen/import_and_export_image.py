@@ -25,3 +25,7 @@ def read_nifti(path):
     """
     img = sitk.ReadImage(path)
     return img
+
+def get_img_array_sitk(img):
+    img_array = sitk.GetArrayFromImage(img)
+    return img_array
