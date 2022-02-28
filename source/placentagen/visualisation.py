@@ -30,9 +30,10 @@ def plot_vasculature_3d(nodes, elems, colour, radii,x_dim,y_dim,z_dim):
 
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    ax.set_xlim(left=0,right=x_dim)
-    ax.set_ylim(bottom=0, top=y_dim)
-    ax.set_zlim(bottom=0,top=z_dim)
+    if x_dim >0:
+        ax.set_xlim(left=0,right=x_dim)
+        ax.set_ylim(bottom=0, top=y_dim)
+        ax.set_zlim(bottom=0,top=z_dim)
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z (slices)")

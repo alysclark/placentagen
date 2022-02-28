@@ -74,7 +74,9 @@ def calc_funnel_resistance(mu, radius_a, radius_b, length_a,length_b):
     return resistance
 
 def calc_total_tension(fit_passive_params, fit_myo_params, fit_flow_params, fixed_flow_params,diameter, pressure):
-
+    #pressure is transmural pressure (kPa)
+    #lengths are in um
+    #everything else in SI units
     include_passive = True
     include_flow = True
     include_myo = True
@@ -84,8 +86,8 @@ def calc_total_tension(fit_passive_params, fit_myo_params, fit_flow_params, fixe
         include_flow = False
 
     #Defining parameters of importance in passive model
-    D0 = fit_passive_params[0]
-    Cpass = fit_passive_params[1]
+    D0 = fit_passive_params[0] #um
+    Cpass = fit_passive_params[1] 
     Cpassdash = fit_passive_params[2]
     if include_myo:
         #Defining parameters relavent to myogenic model
@@ -95,17 +97,31 @@ def calc_total_tension(fit_passive_params, fit_myo_params, fit_flow_params, fixe
         Cmyo = fit_myo_params[3]
         Cdashdashtone = fit_myo_params[4]
     if include_flow:
-        #Defining parameters related to blood flow through vessel
-        Cshear = fit_flow_params[0]
-        Cshear2 = -fit_flow_params[1]
-        tau1 = fit_flow_params[2]
-        tau2 = fit_flow_params[3]
-        mu = fixed_flow_params[0]
-        length = fixed_flow_params[1]
-        dp_blood = fixed_flow_params[2]
-        resistance = calc_tube_resistance(mu,diameter/2.,length)
-        flow = dp_blood/resistance
-        tau = calc_tube_shear(mu,diameter/2.,flow)
+        if(fixed_flow_params[4]==1):
+           #Defining parameters related to blood flow through vessel, presribed flow
+           Cshear = fit_flow_params[0]
+           Cshear2 = -fit_flow_params[1]
+           tau1 = fit_flow_params[2]
+           tau2 = fit_flow_params[3]
+           mu = fixed_flow_params[0] #viscosity Pa.s
+           length = fixed_flow_params[1] #length of artery um
+           flow = fixed_flow_params[2] #blood flow in artery !m3/s
+           tau = calc_tube_shear(mu,diameter/2000000.,flow) #In Pa  
+        else:
+           #Defining parameters related to blood flow through vessel, prescribed pressure drop
+           Cshear = fit_flow_params[0]
+           Cshear2 = -fit_flow_params[1]
+           tau1 = fit_flow_params[2]
+           tau2 = fit_flow_params[3]
+           mu = fixed_flow_params[0] #viscosity
+           length = fixed_flow_params[1] #length of artery
+           dp_blood = fixed_flow_params[2] #blood pressure drop in artery #in Pa
+           system_resistance = fixed_flow_params[3] #any system resistance in myography, would be zero in a flow network model
+           resistance = calc_tube_resistance(mu,diameter/2000000.,length/1000000.) + system_resistance# conversions take um to m #Pa.s/m3
+           flow = dp_blood/resistance ## m3/s
+           tau = calc_tube_shear(mu,diameter/2000000.,flow) #In Pa
+        
+
 
     if not include_myo and not include_flow:
         Tmaxact=0.
@@ -159,14 +175,10 @@ def diameter_from_pressure(fit_passive_params,fit_myo_params,fit_flow_params,fix
                                                                                                      pressure,verbose)
             #if verbose:
             if diameter<10:
-                #print(lowest_sign)
-                print('zero',pressure,dp_blood,lowest_sign,diameter_pass,reference_diameter)
                 lowest_sign = find_possible_roots(0.,reference_diameter*1.10, fit_passive_params, fit_myo_params,fit_flow_params,fixed_flow_params, pressure,verbose)
                 diameter = bisection_method_diam(lowest_sign[0], lowest_sign[1], fit_passive_params,fit_myo_params,fit_flow_params,fixed_flow_params, \
                                                                                                      pressure,verbose)
-                print(diameter,lowest_sign)
-                #print(diameter_pass,D0)  # calculates a passive diameter
-                #diameter_act = diameter_pass
+
 
         return diameter
 
@@ -178,19 +190,17 @@ def find_possible_roots(low_diam,high_diam, fit_passive_params, fit_myo_params, 
     lowest_signchange = np.zeros(2)
     i = 0
     ten_resid[i] = tension_balance(fit_passive_params,fit_myo_params, fit_flow_params,fixed_flow_params,diameter_range[i], pressure)
-    print(np.sign(ten_resid[i]))
     samesign = True
     #for every diameter in the range calculate the tension residual
     while samesign:
         i=i+1
         ten_resid[i] = tension_balance(fit_passive_params,fit_myo_params, fit_flow_params,fixed_flow_params,diameter_range[i],pressure)
         if np.sign(ten_resid[i]) != np.sign(ten_resid[i-1]):
-            print("chaning sign",i)
+
             samesign = False
-        print(i,discretise)
         if(i==(discretise -1)) and samesign:
             samesign = False
-    print(i)
+
 
 
     if i==(discretise-1) and samesign: #should be searching for a higher diameter
@@ -203,7 +213,6 @@ def find_possible_roots(low_diam,high_diam, fit_passive_params, fit_myo_params, 
             i=i+1
             ten_resid[i] = tension_balance(fit_passive_params,fit_myo_params, fit_flow_params,fixed_flow_params,diameter_range[i],pressure)
             if np.sign(ten_resid[i]) != np.sign(ten_resid[i-1]):
-                print("chaning sign",i)
                 samesign = False
         if verbose:
             print('had to go again')
