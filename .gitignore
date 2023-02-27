@@ -8,6 +8,7 @@ __pycache__/
 
 #Stupid mac stuff
 .DS_Store
+._*
 
 # Distribution / packaging
 .Python
