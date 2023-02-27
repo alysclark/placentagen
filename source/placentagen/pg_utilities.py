@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def rotation_matrix_3d(axis, angle_rot):
+    #Creates a 3D transformation that rotates by angle_rot around axis
     axis = axis / np.linalg.norm(axis)  # normalise just in case
     R = np.zeros((3, 3))
     R[0][0] = np.cos(angle_rot) + axis[0] ** 2 * (1 - np.cos(angle_rot))
@@ -19,6 +21,7 @@ def rotation_matrix_3d(axis, angle_rot):
 
 
 def calculate_ellipse_radii(volume, thickness, ellipticity):
+    #Calculates x,y,z radii of ellipse based on three parameters, volume, thickness and eliptcity
     pi = np.pi
     z_radius = thickness / 2.0
     x_radius = np.sqrt(volume * 3.0 / (4.0 * pi * ellipticity * z_radius))
@@ -28,11 +31,13 @@ def calculate_ellipse_radii(volume, thickness, ellipticity):
 
 
 def z_from_xy(x, y, x_radius, y_radius, z_radius):
+    #Calculates z point on elipse surface from x,y coordinates
     z = z_radius * np.sqrt(1.0 - (x / x_radius) ** 2 - (y / y_radius) ** 2)
     return z
 
 
 def check_in_ellipsoid(x, y, z, x_radius, y_radius, z_radius):
+    #checks the point x,y,z is in an ellipsoid
     in_ellipsoid = False  # default to false
     coord_check = (x / x_radius) ** 2. + (y / y_radius) ** 2. + (z / z_radius) ** 2.
     if coord_check < 1.0:
@@ -42,6 +47,7 @@ def check_in_ellipsoid(x, y, z, x_radius, y_radius, z_radius):
 
 
 def check_on_ellipsoid(x, y, z, x_radius, y_radius, z_radius):
+    #Checks the point x,yz, is on the surface of an ellipsoid to some tolerance
     zero_tol = 1.e-10
     on_ellipsoid = False  # default to false
     coord_check = (x / x_radius) ** 2. + (y / y_radius) ** 2. + (z / z_radius) ** 2.
@@ -52,6 +58,7 @@ def check_on_ellipsoid(x, y, z, x_radius, y_radius, z_radius):
 
 
 def check_in_on_ellipsoid(x, y, z, x_radius, y_radius, z_radius):
+    #check if the point x,y, z is in OR on an ellipsoid
     zero_tol = 1.e-10
     in_ellipsoid = False  # default to false
     coord_check = (x / x_radius) ** 2. + (y / y_radius) ** 2. + (z / z_radius) ** 2.
@@ -64,6 +71,7 @@ def check_in_on_ellipsoid(x, y, z, x_radius, y_radius, z_radius):
 
 
 def angle_two_vectors(vector1, vector2):
+    #Finds the angle between vector 1 and vector 2
     vector1_u = vector1 / np.linalg.norm(vector1)
     vector2_u = vector2 / np.linalg.norm(vector2)
 
@@ -83,18 +91,21 @@ def angle_two_vectors(vector1, vector2):
 
 
 def element_connectivity_1D(node_loc, elems):
+    # Calculates element connectivity in a bifurcating array
     # Initialise connectivity arrays
     num_elems = len(elems)
-    elem_upstream = np.zeros((num_elems, 3), dtype=int)
-    elem_downstream = np.zeros((num_elems, 3), dtype=int)
+
     num_nodes = len(node_loc)
-    elems_at_node = np.zeros((num_nodes, 4), dtype=int)
+    elems_at_node = np.zeros((num_nodes, 20), dtype=int) #allow up to 20-furcations
     # determine elements that are associated with each node
     for ne in range(0, num_elems):
         for nn in range(1, 3):
             nnod = elems[ne][nn]
             elems_at_node[nnod][0] = elems_at_node[nnod][0] + 1
             elems_at_node[nnod][elems_at_node[nnod][0]] = ne
+            
+    elem_upstream = np.zeros((num_elems, int(np.max(elems_at_node[:,0]))), dtype=int)
+    elem_downstream = np.zeros((num_elems, int(np.max(elems_at_node[:,0]))), dtype=int)
     # assign connectivity
     for ne in range(0, num_elems):
         nnod2 = elems[ne][2]  # second node in elem
@@ -109,7 +120,7 @@ def element_connectivity_1D(node_loc, elems):
     return {'elem_up': elem_upstream, 'elem_down': elem_downstream}
 
 def group_elem_parent(ne_parent, elem_downstream):
-
+    #Finds all the elements under a parent element
     ne_old = np.zeros(5000, dtype=int)
     ntemp_list = np.zeros(5000, dtype=int)
     ne_temp = np.zeros(5000, dtype=int)
@@ -165,6 +176,7 @@ def plane_from_3_pts(x0, x1, x2, normalise):
 
 
 def check_colinear(x0, x1, x2):
+    #Checks if three points are colinear
     colinear = False
     vector1 = (x1 - x0) / np.linalg.norm(x1 - x0)
     vector2 = (x1 - x2) / np.linalg.norm(x1 - x2)
@@ -294,6 +306,45 @@ def locate_node(startx, starty, startz, xside, yside, zside, nelem_x, nelem_y, n
                 nelem_x * nelem_y))  # this is the element where the point/node located
     return nelem
 
+def renumber_geom(nodes,elems):
+    #renumbers nodes and elements in case of skipped nodes in external editing
+    nodes_list = nodes['nodes'][:,0].astype(int)
+    elems_temp = elems['elems']
+    total_nodes = nodes['total_nodes']
+    total_elems = elems['total_elems']
+    nod_array = np.copy(nodes['nodes'])
+    el_array = np.copy(elems_temp)
+    total_el = 0
+    for ne in range(0,total_elems):
+        new_np1 = np.where(nodes_list == elems_temp[ne,1])[0][0]
+        new_np2 = np.where(nodes_list == elems_temp[ne,2])[0][0]
+
+        if new_np1 != new_np2:#removing accidental node to node connections
+            #np.where(el_array[:,1]==new_np1 and el_array[:,2]==new_np2))
+            el_array[total_el,0] = total_el
+            if new_np1 <   new_np2:
+                el_array[total_el,1] = new_np1
+                el_array[total_el, 2] = new_np2
+            else:
+                el_array[total_el,1] = new_np2
+                el_array[total_el, 2] = new_np1
+            total_el = total_el + 1
+            unq, count = np.unique(el_array[0:total_el,1:3], axis=0, return_counts=True)
+            repeated_groups = unq[count > 1]
+            if len(repeated_groups) > 0:
+                print('removing duplicate')
+                el_array[total_el, :] = 0
+                total_el = total_el - 1
+        else:
+            print('removing isolated')
+
+
+    for nnod in range(0,total_nodes):
+        nod_array[nnod,0] = nnod
+
+    return {'total_elems': total_el, 'elems': el_array[0:total_el,:], 'total_nodes':total_nodes, 'nodes': nod_array}
+
+    
 
 def remove_rows(main_array, arrays):
     ######
@@ -367,50 +418,6 @@ def is_member(v, matrix):
     return -1
 
 
-######
-# Function: Creates a 3D plot of branching tree
-# Inputs: nodes - an M x 3 array giving cartesian coordinates (x,y,z) for the node locations in the tree
-#         elems - an N x 3 array, the first colum in the element number, the second two columns are the index of the start and end node
-#         colour - an N x 1 array where value determines colour of corresponding element
-#         Nc - the maximum number of elements connected at a single node
-# Outputs: 3D plot of tree, with radius proportional to radii and colour depending on the input array
-######
-
-def plot_vasculature_3d(nodes, elems, colour, radii):
-    # initialize arrays
-    Ne = len(elems)
-    elems = elems[:, 1:3]
-    x = np.zeros([Ne, 2])
-    y = np.zeros([Ne, 2])
-    z = np.zeros([Ne, 2])
-
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-
-    # scale colour and radii
-    colour = (colour - min(colour)) / max(colour) * 255.
-    radii = radii / max(radii) * 3.
-
-    for i in range(0, Ne):
-        # get start and end node
-        nN1 = int(elems[i, 0])
-        nN2 = int(elems[i, 1])
-
-        # get coordinates of nodes
-        x[i, 0] = nodes[nN1, 0]
-        y[i, 0] = nodes[nN1, 1]
-        z[i, 0] = nodes[nN1, 2]
-        x[i, 1] = nodes[nN2, 0]
-        y[i, 1] = nodes[nN2, 1]
-        z[i, 1] = nodes[nN2, 2]
-
-        colour_value = np.asarray(cm.jet(int(colour[i])))
-        ax.plot(np.squeeze(x[i, :]), np.squeeze(y[i, :]), np.squeeze(z[i, :]), c=colour_value[0:3], linewidth=radii[i])
-
-    plt.show()
-
-    return 0
-
 
 ######
 # Function: Finds the maximum number of elements that join at one node
@@ -458,5 +465,30 @@ def find_strahler_ratio(Orders, Factor):
     #plt.title(heading)
     #plt.legend()
     #plt.show()
-
     return grad, r2
+
+
+######
+# Function: Remove rows from both mainArray and Arrays at which main array has values less than zero
+# Inputs: mainArray - an N x M array of values
+#         Arrays - a list of arrays each with length N for their first axis
+# Outputs: for each row of mainArray for which the first element is below zero; this row is removed from mainArray and from each array
+######
+
+def remove_rows(main_array, arrays):
+    i = 0
+
+    while i < len(main_array):
+        if main_array[i, 0] < 0:  # then get rid of row from all arrays
+
+            for j in range(0, len(arrays)):
+                array = arrays[j]
+                array = np.delete(array, (i), axis=0)
+                arrays[j] = array
+            main_array = np.delete(main_array, (i), axis=0)
+
+        else:
+            i = i + 1
+
+    return main_array, arrays
+
