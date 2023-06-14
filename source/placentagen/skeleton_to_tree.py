@@ -20,7 +20,7 @@ def check_multiple(elem_connect):
     count = 0
     for i in range(0, len(down)):
         if down[i][0] > 2:
-            print ('element ', i, 'has ', down[i][0], ' downstream elements')
+            print ('element ', i, 'has ', down[i][0], ' downstream elements', down[i][:])
             if max_down < down[i][0]:
                 max_down=down[i][0]
             count = count + 1
@@ -173,6 +173,7 @@ def delete_unused_nodes(nodes,elems):
             elems[ne,nind] = int(node_map[nn])
 
     print('DELETING NODES',delete_list)
+    print('Deleted ', len(delete_list), ' nodes')
     return nodes, elems
 
 
@@ -563,7 +564,9 @@ def remove_multiple_elements(geom):
             if elem_down[ne][0] > 2:  # more than 2 connected downstream
                 geom_new['nodes'], node2 = extend_node(ne, geom_new)  # create new node
                 geom_new = update_elems(ne, node2, geom_new, elem_connect)  # create new element and update old)
+
         elem_connect = pg_utilities.element_connectivity_1D(geom_new['nodes'], geom_new['elems'])
+
         max_down = check_multiple(elem_connect)
     elem_down = elem_connect['elem_down']
     elem_up = elem_connect['elem_up']

@@ -56,3 +56,19 @@ def plot_vasculature_3d(nodes, elems, colour, radii,x_dim,y_dim,z_dim):
         colour_value = np.asarray(cm.jet(int(colour[i])))
         ax.plot(np.squeeze(x[i, :]), np.squeeze(y[i, :]), np.squeeze(z[i, :]), c=colour_value[0:3], linewidth=2.)#*radii[i])
     plt.show()
+
+def image_show(nda, figurenum=1,  title=None, margin=0.05, dpi=40,colormap="gray",normalise=None ,exportto=None):
+    #spacing = nda.GetSpacing()
+    figsize = (1 + margin) * nda.shape[0] / dpi, (1 + margin) * nda.shape[1] / dpi
+    #extent = (0, nda.shape[1] * spacing[1], nda.shape[0] * spacing[0], 0)
+    fig = plt.figure(num=figurenum,figsize=figsize, dpi=dpi)
+    ax = fig.add_axes([margin, margin, 1 - 2 * margin, 1 - 2 * margin])
+
+    plt.set_cmap(colormap)
+
+    pcm = ax.imshow(nda,norm=normalise)#, extent=extent, interpolation=None)
+    plt.colorbar(pcm,ax=ax)
+    if title:
+        plt.title(title)
+
+    plt.show()

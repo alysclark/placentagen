@@ -248,8 +248,12 @@ def branch_properties(geom,branch_geom):
        tmp_elems = my_elems[geom['branch id']==nb+1]
        branch_geom['length'][nb] = np.sum(geom['length'][tmp_elems])
        branch_geom['radii'][nb] = np.sum(geom['radii'][tmp_elems])/float(len(tmp_elems))
+       if(len(tmp_elems)<1):
+           print("ALERT")
+           print(nb,len(tmp_elems))
        if nb<2:
-           print(geom['length'][tmp_elems],len(tmp_elems))
+           print('initial branches',geom['length'][tmp_elems],len(tmp_elems))
+           print('initial branches', geom['radii'][tmp_elems], len(tmp_elems),np.mean(geom['radii'][tmp_elems]))
        
     for nb in range(0,num_branch):
         if branch_geom['elem_up'][nb,0]>0:
@@ -1703,6 +1707,8 @@ def summary_statistics(branchGeom, major_minor_results,ordering_system):
     L_maj_parent = L_maj_parent[(L_maj_parent > 0)]
     
     branchVols = np.multiply(branchGeom['radii'],branchGeom['radii'])*np.pi*branchLen
+
+
     if (branchGeom['nodes'][:,3]!=branchGeom['nodes'][0,3]).all():
         hull = sp.ConvexHull(branchGeom['nodes'][:,1:4])
     
